@@ -10,6 +10,7 @@ use axum::{routing::get, Json, Router};
 use serde_json::json;
 
 use crate::config::read_config;
+use crate::db::connect_db;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -20,6 +21,9 @@ async fn main() -> std::io::Result<()> {
 
     //Read Config at the moment just PORT
     let config = read_config();
+    //Connect to database
+    connect_db().await.expect("Failed to connect to database");
+
 
     let app = Router::new()
         .route("/health", get(check_health));
