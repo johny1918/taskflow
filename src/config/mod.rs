@@ -14,7 +14,7 @@ impl Config {
             database_url,
         }
     }
-   pub fn get_port(&self) -> String {
+    pub fn get_port(&self) -> String {
         self.port.clone()
     }
 
@@ -25,7 +25,6 @@ impl Config {
     pub fn get_database_url(&self) -> String {
         self.database_url.clone()
     }
-
 }
 pub fn read_config() -> Config {
     dotenv::dotenv().ok();
