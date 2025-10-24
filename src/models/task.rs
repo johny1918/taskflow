@@ -1,5 +1,6 @@
+use serde::{Deserialize, Serialize};
 
-#[derive(sqlx::FromRow, Debug)]
+#[derive(sqlx::FromRow, Debug, Serialize, Deserialize)]
 pub struct Task {
     pub id: i32,
     pub title: String,

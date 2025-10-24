@@ -1,4 +1,3 @@
-use dotenv;
 
 pub struct Config {
     port: String,

@@ -1,6 +1,5 @@
 use crate::config::read_config;
 use sqlx::PgPool;
-use tracing;
 use crate::models::Task;
 
 pub async fn connect_db() -> PgPool {
@@ -8,7 +7,7 @@ pub async fn connect_db() -> PgPool {
     let config = read_config();
     let database_url = config.get_database_url();
 
-    //Create connection pool
+    //Create a connection pool
     let pool = PgPool::connect(&database_url)
         .await
         .expect("Failed to connect to database");
@@ -17,7 +16,7 @@ pub async fn connect_db() -> PgPool {
     pool
 }
 
-pub async fn get_tasks(db: &PgPool) -> Result<Vec<Task>, sqlx::Error> {
+pub async fn fetch_tasks(db: &PgPool) -> Result<Vec<Task>, sqlx::Error> {
     let task = sqlx::query_as::<_, Task>("SELECT * FROM tasks")
         .fetch_all(db)
         .await?;
