@@ -8,7 +8,6 @@ mod services;
 
 use routes::*;
 
-
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     tracing_subscriber::fmt()
@@ -21,5 +20,3 @@ async fn main() -> std::io::Result<()> {
 
     Ok(())
 }
-
-

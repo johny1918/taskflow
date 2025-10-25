@@ -1,4 +1,3 @@
-
 pub struct Config {
     port: String,
     ip: String,

@@ -6,3 +6,9 @@ pub struct Task {
     pub title: String,
     pub done: bool,
 }
+
+#[derive(sqlx::FromRow, Debug, Serialize, Deserialize)]
+pub struct NewTask {
+    pub title: String,
+    pub done: bool,
+}

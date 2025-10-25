@@ -1,6 +1,6 @@
 use crate::config::read_config;
+use crate::models::*;
 use sqlx::PgPool;
-use crate::models::Task;
 
 pub async fn connect_db() -> PgPool {
     // Read config for .env variables
@@ -21,4 +21,14 @@ pub async fn fetch_tasks(db: &PgPool) -> Result<Vec<Task>, sqlx::Error> {
         .fetch_all(db)
         .await?;
     Ok(task)
+}
+
+pub async fn insert_task(db: &PgPool, task: NewTask) -> Result<Vec<NewTask>, sqlx::Error> {
+    let result = sqlx::query_as::<_, NewTask> (
+        r#"INSERT INTO tasks (title, done) VALUES ($1, $2) RETURNING *"#,
+    ).bind(&task.title)
+        .bind(task.done)
+        .fetch_all(db)
+        .await?;
+    Ok(result)
 }
