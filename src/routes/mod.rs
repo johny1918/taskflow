@@ -1,26 +1,31 @@
 use crate::config::read_config;
-use crate::db::{delete, insert, read, update};
+use crate::db::{delete, insert, read, read_one, update};
+use crate::errors::AppError;
+use crate::errors::AppError::DatabaseError;
 use crate::models::NewTask;
 use axum::extract::{Path, State};
-use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Json, Router};
 use serde_json::json;
 use sqlx::PgPool;
 
-pub async fn start_server() -> std::io::Result<()> {
+pub async fn start_server() -> Result<(), AppError> {
     // Read Config
     let config = read_config();
 
     // Connect to database
-    let pool = crate::db::connect_db().await;
+    let pool = crate::db::connect_db().await?;
 
     println!("Listening on {}:{}", config.get_ip(), config.get_port());
     let listener =
-        tokio::net::TcpListener::bind(format!("{}:{}", config.get_ip(), config.get_port())).await?;
+        tokio::net::TcpListener::bind(format!("{}:{}", config.get_ip(), config.get_port()))
+            .await
+            .map_err(|e| AppError::DatabaseError(format!("Failed to bind to address: {}", e)))?;
 
     // Start server with database pool in state
-    axum::serve(listener, server_paths(pool).await).await?;
+    axum::serve(listener, server_paths(pool).await)
+        .await
+        .map_err(|e| AppError::DatabaseError(format!("Server error: {}", e)))?;
 
     Ok(())
 }
@@ -29,88 +34,81 @@ async fn server_paths(pool: PgPool) -> Router {
     let app: Router = Router::new()
         .route("/health", get(check_health))
         .route("/tasks", get(read_tasks).post(create_task))
-        .route("/tasks/{id}", get(get_single_task).put(update_task).delete(delete_task))
+        .route(
+            "/tasks/{id}",
+            get(get_single_task).put(update_task).delete(delete_task),
+        )
         .with_state(pool);
 
     app
 }
 
-async fn read_tasks(State(pool): State<PgPool>) -> Result<Json<serde_json::Value>, StatusCode> {
-    match read(&pool).await {
-        Ok(tasks) => Ok(Json(json!({ "tasks": tasks }))),
-        Err(e) => {
-            tracing::error!("Failed to fetch tasks: {:?}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
+async fn read_tasks(State(pool): State<PgPool>) -> Result<Json<serde_json::Value>, AppError> {
+    let tasks = read(&pool).await.map_err(|e| {
+        e.to_string();
+    });
+    Ok(Json(json!({ "tasks": tasks })))
 }
 
 async fn get_single_task(
     State(pool): State<PgPool>,
     Path(id): Path<i32>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    match crate::db::read_one(&pool, id).await {
-        Ok(task) => Ok(Json(json!({ "task": task }))),
-        Err(e) => {
-            tracing::error!("Failed to fetch task: {:?}", e);
-            Err(StatusCode::NOT_FOUND)
-        }
-    }
+) -> Result<Json<serde_json::Value>, AppError> {
+    let task = read_one(&pool, id)
+        .await
+        .map_err(|e| DatabaseError(e.to_string()));
+
+    Ok(Json(json!({ "task": task })))
 }
 
 async fn create_task(
     State(pool): State<PgPool>,
     Json(data): Json<NewTask>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
+) -> Result<Json<serde_json::Value>, AppError> {
     // Validate title is not empty
     if data.title.trim().is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::NotFound("Title is empty".to_string()));
     }
-    match insert(&pool, data).await {
-        Ok(task) => Ok(Json(json!({
-            "status": "success",
-            "task": task
-        }))),
-        Err(e) => {
-            tracing::error!("Failed to insert task: {:?}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
+    let task = insert(&pool, data)
+        .await
+        .map_err(|e| DatabaseError(e.to_string()));
+
+    Ok(Json(json!({
+        "status": "success",
+        "task": task
+    })))
 }
 
 async fn delete_task(
     State(pool): State<PgPool>,
     Path(id): Path<i32>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    match delete(&pool, id).await {
-        Ok(_) => Ok(Json(json!({ "status": "Task deleted" }))),
-        Err(e) => {
-            tracing::error!("Failed to delete task: {:?}", e);
-            Err(StatusCode::NOT_FOUND)
-        }
-    }
+) -> Result<Json<serde_json::Value>, AppError> {
+    let task = delete(&pool, id)
+        .await
+        .map_err(|e| DatabaseError(e.to_string()));
+
+    Ok(Json(json!({ "status": "success",
+    "task deleted with success": task })))
 }
 
 async fn update_task(
     State(pool): State<PgPool>,
     Path(id): Path<i32>,
     Json(data): Json<NewTask>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
+) -> Result<Json<serde_json::Value>, AppError> {
     // Validate title is not empty
     if data.title.trim().is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::NotFound("Title is empty".to_string()));
     }
 
-    match update(&pool, id, data).await {
-        Ok(task) => Ok(Json(json!({
-            "status": "success",
-            "task updated with success": task
-        }))),
-        Err(e) => {
-            tracing::error!("Failed to update task: {:?}", e);
-            Err(StatusCode::NOT_FOUND)
-        }
-    }
+    let task = update(&pool, id, data)
+        .await
+        .map_err(|e| DatabaseError(e.to_string()));
+
+    Ok(Json(json!({
+        "status": "success",
+        "task updated with success": task
+    })))
 }
 
 async fn check_health() -> Json<serde_json::Value> {

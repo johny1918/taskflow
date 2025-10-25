@@ -7,6 +7,7 @@ mod routes;
 mod services;
 
 use routes::*;
+use crate::errors::AppError;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -16,7 +17,7 @@ async fn main() -> std::io::Result<()> {
     tracing::info!("Starting TaskFlow backend...");
 
     // Start Server
-    start_server().await.expect("Failed to start server");
+    let _ = start_server().await.map_err(|_|AppError::NotFound("Fail to start server".to_string()));
 
     Ok(())
 }
