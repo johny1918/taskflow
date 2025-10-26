@@ -17,12 +17,23 @@ pub async fn connect_db() -> Result<PgPool, AppError> {
     Ok(pool)
 }
 
-pub async fn read(db: &PgPool) -> Result<Vec<Task>, AppError> {
-    let task = sqlx::query_as::<_, Task>("SELECT * FROM tasks")
+pub async fn read(db: &PgPool, done_filter: Option<bool>) -> Result<Vec<Task>, AppError> {
+    let mut query = "SELECT * FROM tasks".to_string();
+    if let Some(done_filter) = done_filter {
+        if done_filter == true {
+            query = "SELECT * FROM tasks WHERE done = true".to_string();
+            tracing::info!("Read query by filter executed successfully");
+        }
+        else if done_filter == false {
+            query = "SELECT * FROM tasks WHERE done = false".to_string();
+            tracing::info!("Read query by filter executed successfully");
+        }
+    }
+
+    let task = sqlx::query_as::<_, Task>(query.as_str())
         .fetch_all(db)
         .await
         .map_err(|_| AppError::DatabaseError("Fail to read all tasks from database".to_string()))?;
-    tracing::info!("Read all query executed successfully");
     Ok(task)
 }
 

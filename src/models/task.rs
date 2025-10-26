@@ -12,3 +12,8 @@ pub struct NewTask {
     pub title: String,
     pub done: bool,
 }
+
+#[derive(Deserialize)]
+pub struct TaskFilter {
+    pub done: Option<bool>,
+}

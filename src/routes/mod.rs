@@ -2,12 +2,14 @@ use crate::config::read_config;
 use crate::db::{delete, insert, read, read_one, update};
 use crate::errors::AppError;
 use crate::errors::AppError::DatabaseError;
+use crate::models::TaskFilter;
 use crate::models::NewTask;
 use axum::extract::{Path, State};
 use axum::routing::get;
 use axum::{Json, Router};
 use serde_json::json;
 use sqlx::PgPool;
+use axum::extract::Query;
 
 pub async fn start_server() -> Result<(), AppError> {
     // Read Config
@@ -43,11 +45,10 @@ async fn server_paths(pool: PgPool) -> Router {
     app
 }
 
-async fn read_tasks(State(pool): State<PgPool>) -> Result<Json<serde_json::Value>, AppError> {
-    let tasks = read(&pool).await.map_err(|e| {
+async fn read_tasks(State(pool): State<PgPool>, Query(par): Query<TaskFilter>) -> Result<Json<serde_json::Value>, AppError> {
+    let tasks = read(&pool, par.done).await.map_err(|e| {
         e.to_string();
     });
-    tracing::info!("All tasks have been read with success");
     Ok(Json(json!({ "tasks": tasks })))
 }
 
@@ -61,6 +62,7 @@ async fn get_single_task(
     tracing::info!("Task with id {} has been read with success", id);
     Ok(Json(json!({ "task": task })))
 }
+
 
 async fn create_task(
     State(pool): State<PgPool>,
