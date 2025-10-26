@@ -20,11 +20,10 @@ pub async fn connect_db() -> Result<PgPool, AppError> {
 pub async fn read(db: &PgPool, done_filter: Option<bool>) -> Result<Vec<Task>, AppError> {
     let mut query = "SELECT * FROM tasks".to_string();
     if let Some(done_filter) = done_filter {
-        if done_filter == true {
+        if done_filter {
             query = "SELECT * FROM tasks WHERE done = true".to_string();
             tracing::info!("Read query by filter executed successfully");
-        }
-        else if done_filter == false {
+        } else if !done_filter {
             query = "SELECT * FROM tasks WHERE done = false".to_string();
             tracing::info!("Read query by filter executed successfully");
         }
@@ -63,14 +62,17 @@ pub async fn insert(db: &PgPool, task: NewTask) -> Result<Task, AppError> {
     Ok(result)
 }
 
-pub async fn delete(db: &PgPool, id: i32) -> Result<(), AppError> {
-    sqlx::query("DELETE FROM tasks WHERE id = $1")
+pub async fn delete(db: &PgPool, id: i32) -> Result<u64, AppError> {
+    let result = sqlx::query("DELETE FROM tasks WHERE id = $1")
         .bind(id)
         .execute(db)
         .await
         .map_err(|_| AppError::DatabaseError("Fail to delete task from database".to_string()))?;
-    tracing::info!("Delete just one task query executed successfully");
-    Ok(())
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound("Task not found".into()));
+    }
+    tracing::info!("Delete task query executed successfully");
+    Ok(result.rows_affected())
 }
 
 pub async fn update(db: &PgPool, id: i32, task: NewTask) -> Result<Task, AppError> {
@@ -82,7 +84,11 @@ pub async fn update(db: &PgPool, id: i32, task: NewTask) -> Result<Task, AppErro
     .bind(id)
     .fetch_one(db)
     .await
-    .map_err(|_| AppError::DatabaseError("Fail to update task from database".to_string()))?;
+    .map_err(|e| match e {
+        sqlx::Error::RowNotFound => AppError::NotFound("Task not found".into()),
+        _ => AppError::DatabaseError("Fail to update task from database".to_string()),
+    });
+
     tracing::info!("Update task query executed successfully");
-    Ok(result)
+    result
 }

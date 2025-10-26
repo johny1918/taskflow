@@ -2,14 +2,14 @@ use crate::config::read_config;
 use crate::db::{delete, insert, read, read_one, update};
 use crate::errors::AppError;
 use crate::errors::AppError::DatabaseError;
-use crate::models::TaskFilter;
 use crate::models::NewTask;
+use crate::models::TaskFilter;
+use axum::extract::Query;
 use axum::extract::{Path, State};
 use axum::routing::get;
 use axum::{Json, Router};
 use serde_json::json;
 use sqlx::PgPool;
-use axum::extract::Query;
 
 pub async fn start_server() -> Result<(), AppError> {
     // Read Config
@@ -45,7 +45,10 @@ async fn server_paths(pool: PgPool) -> Router {
     app
 }
 
-async fn read_tasks(State(pool): State<PgPool>, Query(par): Query<TaskFilter>) -> Result<Json<serde_json::Value>, AppError> {
+async fn read_tasks(
+    State(pool): State<PgPool>,
+    Query(par): Query<TaskFilter>,
+) -> Result<Json<serde_json::Value>, AppError> {
     let tasks = read(&pool, par.done).await.map_err(|e| {
         e.to_string();
     });
@@ -62,7 +65,6 @@ async fn get_single_task(
     tracing::info!("Task with id {} has been read with success", id);
     Ok(Json(json!({ "task": task })))
 }
-
 
 async fn create_task(
     State(pool): State<PgPool>,
@@ -91,10 +93,12 @@ async fn delete_task(
     let task = delete(&pool, id)
         .await
         .map_err(|e| DatabaseError(e.to_string()));
+    if task? == 0u64 {
+        return Err(AppError::NotFound("Task not found".into()));
+    }
 
     tracing::info!("Task deleted with success");
-    Ok(Json(json!({ "status": "success",
-    "task deleted with success": task })))
+    Ok(Json(json!({ "status": "success", "deleted": id })))
 }
 
 async fn update_task(
@@ -112,11 +116,12 @@ async fn update_task(
         .await
         .map_err(|e| DatabaseError(e.to_string()));
 
+    if task.is_err() {
+        return Err(AppError::NotFound(format!("Task with id {} not found", id)));
+    }
+
     tracing::info!("Task updated with success");
-    Ok(Json(json!({
-        "status": "success",
-        "task updated with success": task
-    })))
+    Ok(Json(json!({ "status": "success", "updated": id })))
 }
 
 async fn check_health() -> Json<serde_json::Value> {
