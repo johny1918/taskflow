@@ -22,6 +22,7 @@ pub async fn read(db: &PgPool) -> Result<Vec<Task>, AppError> {
         .fetch_all(db)
         .await
         .map_err(|_| AppError::DatabaseError("Fail to read all tasks from database".to_string()))?;
+    tracing::info!("Read all query executed successfully");
     Ok(task)
 }
 
@@ -33,6 +34,7 @@ pub async fn read_one(db: &PgPool, id: i32) -> Result<Task, AppError> {
         .map_err(|_| {
             AppError::DatabaseError("Fail to read just one task from database".to_string())
         })?;
+    tracing::info!("Read just one task query executed successfully");
     Ok(task)
 }
 
@@ -46,6 +48,7 @@ pub async fn insert(db: &PgPool, task: NewTask) -> Result<Task, AppError> {
             .map_err(|_| {
                 AppError::DatabaseError("Fail to insert task into database".to_string())
             })?;
+    tracing::info!("Insert task query executed successfully");
     Ok(result)
 }
 
@@ -55,6 +58,7 @@ pub async fn delete(db: &PgPool, id: i32) -> Result<(), AppError> {
         .execute(db)
         .await
         .map_err(|_| AppError::DatabaseError("Fail to delete task from database".to_string()))?;
+    tracing::info!("Delete just one task query executed successfully");
     Ok(())
 }
 
@@ -68,5 +72,6 @@ pub async fn update(db: &PgPool, id: i32, task: NewTask) -> Result<Task, AppErro
     .fetch_one(db)
     .await
     .map_err(|_| AppError::DatabaseError("Fail to update task from database".to_string()))?;
+    tracing::info!("Update task query executed successfully");
     Ok(result)
 }

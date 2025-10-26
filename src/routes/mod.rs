@@ -16,7 +16,7 @@ pub async fn start_server() -> Result<(), AppError> {
     // Connect to database
     let pool = crate::db::connect_db().await?;
 
-    println!("Listening on {}:{}", config.get_ip(), config.get_port());
+    tracing::info!("Listening on {}:{}", config.get_ip(), config.get_port());
     let listener =
         tokio::net::TcpListener::bind(format!("{}:{}", config.get_ip(), config.get_port()))
             .await
@@ -47,6 +47,7 @@ async fn read_tasks(State(pool): State<PgPool>) -> Result<Json<serde_json::Value
     let tasks = read(&pool).await.map_err(|e| {
         e.to_string();
     });
+    tracing::info!("All tasks have been read with success");
     Ok(Json(json!({ "tasks": tasks })))
 }
 
@@ -57,7 +58,7 @@ async fn get_single_task(
     let task = read_one(&pool, id)
         .await
         .map_err(|e| DatabaseError(e.to_string()));
-
+    tracing::info!("Task with id {} has been read with success", id);
     Ok(Json(json!({ "task": task })))
 }
 
@@ -67,12 +68,14 @@ async fn create_task(
 ) -> Result<Json<serde_json::Value>, AppError> {
     // Validate title is not empty
     if data.title.trim().is_empty() {
+        tracing::error!("Fail to create task: title is empty");
         return Err(AppError::NotFound("Title is empty".to_string()));
     }
     let task = insert(&pool, data)
         .await
         .map_err(|e| DatabaseError(e.to_string()));
 
+    tracing::info!("Task created with success");
     Ok(Json(json!({
         "status": "success",
         "task": task
@@ -87,6 +90,7 @@ async fn delete_task(
         .await
         .map_err(|e| DatabaseError(e.to_string()));
 
+    tracing::info!("Task deleted with success");
     Ok(Json(json!({ "status": "success",
     "task deleted with success": task })))
 }
@@ -98,6 +102,7 @@ async fn update_task(
 ) -> Result<Json<serde_json::Value>, AppError> {
     // Validate title is not empty
     if data.title.trim().is_empty() {
+        tracing::error!("Fail to update task: title is empty");
         return Err(AppError::NotFound("Title is empty".to_string()));
     }
 
@@ -105,6 +110,7 @@ async fn update_task(
         .await
         .map_err(|e| DatabaseError(e.to_string()));
 
+    tracing::info!("Task updated with success");
     Ok(Json(json!({
         "status": "success",
         "task updated with success": task
