@@ -16,4 +16,6 @@ pub struct NewTask {
 #[derive(Deserialize)]
 pub struct TaskFilter {
     pub done: Option<bool>,
+    pub page: Option<i64>,
+    pub limit: Option<i64>,
 }

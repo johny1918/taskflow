@@ -49,9 +49,12 @@ async fn read_tasks(
     State(pool): State<PgPool>,
     Query(par): Query<TaskFilter>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let tasks = read(&pool, par.done).await.map_err(|e| {
-        e.to_string();
-    });
+    let page = par.page.unwrap_or(1);
+    let limit = par.limit.unwrap_or(10);
+    let offset = (page - 1) * limit;
+
+    let tasks = read(&pool, par.done, limit, offset).await?;
+
     Ok(Json(json!({ "tasks": tasks })))
 }
 

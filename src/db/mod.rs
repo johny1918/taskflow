@@ -17,14 +17,23 @@ pub async fn connect_db() -> Result<PgPool, AppError> {
     Ok(pool)
 }
 
-pub async fn read(db: &PgPool, done_filter: Option<bool>) -> Result<Vec<Task>, AppError> {
-    let mut query = "SELECT * FROM tasks".to_string();
+pub async fn read(
+    db: &PgPool,
+    done_filter: Option<bool>,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<Task>, AppError> {
+    let mut query = format!("SELECT * FROM tasks LIMIT {limit} OFFSET {offset}");
     if let Some(done_filter) = done_filter {
         if done_filter {
-            query = "SELECT * FROM tasks WHERE done = true".to_string();
+            query = format!(
+                "SELECT * FROM tasks WHERE done = {done_filter} LIMIT {limit} OFFSET {offset}"
+            );
             tracing::info!("Read query by filter executed successfully");
         } else if !done_filter {
-            query = "SELECT * FROM tasks WHERE done = false".to_string();
+            query = format!(
+                "SELECT * FROM tasks WHERE done = {done_filter} LIMIT {limit} OFFSET {offset}"
+            );
             tracing::info!("Read query by filter executed successfully");
         }
     }
