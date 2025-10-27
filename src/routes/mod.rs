@@ -10,6 +10,8 @@ use axum::routing::get;
 use axum::{Json, Router};
 use serde_json::json;
 use sqlx::PgPool;
+use tower_http::services::{ServeDir, ServeFile};
+
 
 pub async fn start_server() -> Result<(), AppError> {
     // Read Config
@@ -33,6 +35,8 @@ pub async fn start_server() -> Result<(), AppError> {
 }
 
 async fn server_paths(pool: PgPool) -> Router {
+    let static_dir = ServeDir::new("static");
+    let index_file = ServeFile::new("static/index.html");
     let app: Router = Router::new()
         .route("/health", get(check_health))
         .route("/tasks", get(read_tasks).post(create_task))
@@ -40,7 +44,9 @@ async fn server_paths(pool: PgPool) -> Router {
             "/tasks/{id}",
             get(get_single_task).put(update_task).delete(delete_task),
         )
-        .with_state(pool);
+        .with_state(pool)
+        .fallback_service(index_file)
+        .nest_service("/static", static_dir);
 
     app
 }

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TaskFlow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-6">
+<div class="w-full max-w-xl bg-white rounded-2xl shadow-lg p-6">
+    <h1 class="text-3xl font-bold mb-6 text-center text-indigo-600">🧭 TaskFlow</h1>
+
+    <!-- Add Task Form -->
+    <form id="task-form" class="flex mb-6">
+        <input
+                type="text"
+                id="task-input"
+                placeholder="Enter new task..."
+                class="flex-grow border border-gray-300 rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <button
+                type="submit"
+                class="bg-indigo-600 text-white px-4 py-2 rounded-r-lg hover:bg-indigo-700 transition"
+        >
+            Add
+        </button>
+    </form>
+
+    <!-- Task List -->
+    <ul id="task-list" class="space-y-2"></ul>
+
+    <!-- Pagination -->
+    <div id="pagination" class="flex justify-between mt-6">
+        <button id="prev-page" class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Prev</button>
+        <span id="page-info" class="text-gray-600 text-sm"></span>
+        <button id="next-page" class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Next</button>
+    </div>
+</div>
+
+<script>
+    const API_URL = "http://127.0.0.1:8123";
+    let page = 1;
+    const limit = 5;
+
+    async function fetchTasks() {
+        const res = await fetch(`${API_URL}/tasks?limit=${limit}&page=${page}`);
+        const data = await res.json();
+        const tasks = data.tasks.Ok || data.tasks; // handle current JSON structure
+        const meta = data.meta || {};
+
+        const list = document.getElementById("task-list");
+        list.innerHTML = "";
+
+        if (!tasks || tasks.length === 0) {
+            list.innerHTML = `<li class="text-gray-500 text-center">No tasks found.</li>`;
+            return;
+        }
+
+        tasks.forEach((t) => {
+            const li = document.createElement("li");
+            li.className =
+                "flex justify-between items-center bg-gray-50 border border-gray-200 rounded-lg px-4 py-2";
+
+            li.innerHTML = `
+          <span class="${t.done ? 'line-through text-gray-400' : ''}">${t.title}</span>
+          <div class="flex space-x-2">
+            <button onclick="toggleTask(${t.id}, ${!t.done})" class="text-sm text-indigo-600 hover:underline">
+              ${t.done ? 'Undo' : 'Done'}
+            </button>
+            <button onclick="deleteTask(${t.id})" class="text-sm text-red-500 hover:underline">Delete</button>
+          </div>
+        `;
+            list.appendChild(li);
+        });
+
+        // Update pagination info
+        document.getElementById("page-info").textContent =
+            `Page ${page}${meta.pages ? " of " + meta.pages : ""}`;
+    }
+
+    async function addTask(title) {
+        await fetch(`${API_URL}/tasks`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, done: false }),
+        });
+        await fetchTasks();
+    }
+
+    async function deleteTask(id) {
+        await fetch(`${API_URL}/tasks/${id}`, { method: "DELETE" });
+        await fetchTasks();
+    }
+
+    async function toggleTask(id, done) {
+        await fetch(`${API_URL}/tasks/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ done, title: "Updated task" }), // title must be sent due to backend validation
+        });
+        await fetchTasks();
+    }
+
+    document.getElementById("task-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const input = document.getElementById("task-input");
+        const title = input.value.trim();
+        if (title) addTask(title);
+        input.value = "";
+    });
+
+    document.getElementById("next-page").addEventListener("click", () => {
+        page++;
+        fetchTasks();
+    });
+
+    document.getElementById("prev-page").addEventListener("click", () => {
+        if (page > 1) {
+            page--;
+            fetchTasks();
+        }
+    });
+
+    fetchTasks();
+</script>
+</body>
+</html>
