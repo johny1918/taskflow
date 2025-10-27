@@ -24,12 +24,12 @@ pub async fn start_server() -> Result<(), AppError> {
     let listener =
         tokio::net::TcpListener::bind(format!("{}:{}", config.get_ip(), config.get_port()))
             .await
-            .map_err(|e| AppError::DatabaseError(format!("Failed to bind to address: {}", e)))?;
+            .map_err(|e| DatabaseError(format!("Failed to bind to address: {}", e)))?;
 
     // Start server with database pool in state
     axum::serve(listener, server_paths(pool).await)
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Server error: {}", e)))?;
+        .map_err(|e| DatabaseError(format!("Server error: {}", e)))?;
 
     Ok(())
 }
