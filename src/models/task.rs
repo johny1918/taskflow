@@ -18,4 +18,6 @@ pub struct TaskFilter {
     pub done: Option<bool>,
     pub page: Option<i64>,
     pub limit: Option<i64>,
+    pub sort: Option<String>,
+    pub order: Option<String>,
 }

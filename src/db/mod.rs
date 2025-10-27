@@ -22,28 +22,41 @@ pub async fn read(
     done_filter: Option<bool>,
     limit: i64,
     offset: i64,
+    sort: Option<String>,
+    order: Option<String>,
 ) -> Result<Vec<Task>, AppError> {
-    let mut query = format!("SELECT * FROM tasks LIMIT {limit} OFFSET {offset}");
-    if let Some(done_filter) = done_filter {
-        if done_filter {
-            query = format!(
-                "SELECT * FROM tasks WHERE done = {done_filter} LIMIT {limit} OFFSET {offset}"
-            );
-            tracing::info!("Read query by filter executed successfully");
-        } else if !done_filter {
-            query = format!(
-                "SELECT * FROM tasks WHERE done = {done_filter} LIMIT {limit} OFFSET {offset}"
-            );
-            tracing::info!("Read query by filter executed successfully");
-        }
+    let mut query = String::from("SELECT * FROM tasks");
+
+    // Filter by done if specified
+    if let Some(done) = done_filter {
+        query.push_str(&format!(" WHERE done = {}", done));
     }
 
-    let task = sqlx::query_as::<_, Task>(query.as_str())
+    // Sorting
+    if let Some(sort_by) = sort {
+        let column = match sort_by.as_str() {
+            "id" | "title" | "done" => sort_by,
+            _ => "id".to_string(), // default safe fallback
+        };
+
+        let direction = match order.clone().unwrap_or_else(|| "asc".to_string()).as_str() {
+            "asc" | "desc" => order.unwrap(),
+            _ => "asc".to_string(), // default safe fallback
+        };
+
+        query.push_str(&format!(" ORDER BY {} {}", column, direction));
+    }
+
+    query.push_str(&format!(" LIMIT {} OFFSET {}", limit, offset));
+
+    let tasks = sqlx::query_as::<_, Task>(&query)
         .fetch_all(db)
         .await
-        .map_err(|_| AppError::DatabaseError("Fail to read all tasks from database".to_string()))?;
-    Ok(task)
+        .map_err(|_| AppError::DatabaseError("Fail to read tasks".to_string()))?;
+
+    Ok(tasks)
 }
+
 
 pub async fn read_one(db: &PgPool, id: i32) -> Result<Task, AppError> {
     let task = sqlx::query_as::<_, Task>("SELECT * FROM tasks WHERE id = $1")

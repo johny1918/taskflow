@@ -53,7 +53,14 @@ async fn read_tasks(
     let limit = par.limit.unwrap_or(10);
     let offset = (page - 1) * limit;
 
-    let tasks = read(&pool, par.done, limit, offset).await?;
+    let tasks = read(
+        &pool,
+        par.done,
+        limit,
+        offset,
+        par.sort.clone(),
+        par.order.clone(),
+    ).await?;
 
     Ok(Json(json!({ "tasks": tasks })))
 }
