@@ -57,7 +57,6 @@ pub async fn read(
     Ok(tasks)
 }
 
-
 pub async fn read_one(db: &PgPool, id: i32) -> Result<Task, AppError> {
     let task = sqlx::query_as::<_, Task>("SELECT * FROM tasks WHERE id = $1")
         .bind(id)

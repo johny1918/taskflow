@@ -12,7 +12,6 @@ use serde_json::json;
 use sqlx::PgPool;
 use tower_http::services::{ServeDir, ServeFile};
 
-
 pub async fn start_server() -> Result<(), AppError> {
     // Read Config
     let config = read_config();
@@ -66,7 +65,8 @@ async fn read_tasks(
         offset,
         par.sort.clone(),
         par.order.clone(),
-    ).await?;
+    )
+    .await?;
 
     Ok(Json(json!({ "tasks": tasks })))
 }
