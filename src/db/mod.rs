@@ -50,6 +50,8 @@ pub async fn read(
     query.push_str(&format!(" LIMIT {} OFFSET {}", limit, offset));
 
     let tasks = sqlx::query_as::<_, Task>(&query)
+        .bind(limit)
+        .bind(offset)
         .fetch_all(db)
         .await
         .map_err(|_| AppError::DatabaseError("Fail to read tasks".to_string()))?;
